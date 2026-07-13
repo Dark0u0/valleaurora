@@ -1,63 +1,90 @@
-let _db = [
-  {
-    id: 1,
-    nombre:     'Sede Central',
-    calle:      'Av. Insurgentes Sur',
-    numero:     '1234',
-    colonia:    'Del Valle',
-    ciudad:     'Ciudad de México',
-    estado:     'CDMX',
-    cp:         '03100',
-    telefono:   '55 5678 9012',
-    celular:    '55 1234 5678',
-    correo:     'contacto@rubastudio.mx',
-    latitud:    19.3730,
-    longitud:   -99.1728,
-    referencia: 'Frente al parque',
-  },
-]
-let _nextId = 2
-const delay = (ms = 420) => new Promise(r => setTimeout(r, ms))
+import { db } from '../config/firebase'
+import { 
+  collection, 
+  getDocs, 
+  doc, 
+  getDoc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc 
+} from 'firebase/firestore'
 
-// ── GET ALL ───────────────────────────────────────────────────────
+// Referencia a la colección en Firestore
+  const collectionRef = collection(db, 'ubicaciones')
+
+// ── GET ALL  (firestore)───────────────────────────────────────────────────────
 export async function getUbicaciones() {
-  await delay()
-  return structuredClone(_db)
+  try {
+    const querySnapshot = await getDocs(collectionRef);
+    const ubicaciones = []
+
+    querySnapshot.forEach((doc) => {
+      //mapeamos el ID del documento de Firebase junto con sus datos
+      ubicaciones.push({ id: doc.id, ...doc.data() })
+    })
+    
+    return ubicaciones  
+  } catch (error) {
+    console.error('[ubicacionService] Error en getUbicaciones:', error)
+    throw new Error('No se pudieron recuperar las ubicaciones del servidor.')
+  }
 }
 
-// ── GET ONE ───────────────────────────────────────────────────────
+// ── GET ONE (firestore)───────────────────────────────────────────────────────
 export async function getUbicacion(id) {
-  await delay()
-  const item = _db.find(u => u.id === id)
-  if (!item) throw new Error(`Ubicación ${id} no encontrada`)
-  return structuredClone(item)
+  try {
+    const docRef = doc(db, 'ubicaciones', id);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      throw new Error(`Ubicación con ID ${id} no encontrada`);
+    }
+
+    return { id: docSnap.id, ...docSnap.data() }
+  } catch (error) {
+    console.error(`[ubicacionService] Error en getUbicacion (${id}):`, error);
+    throw new Error(error.message || 'Error al obtener los detalles de la ubicación.');
+  }
 }
 
-// ── CREATE ────────────────────────────────────────────────────────
+// ── CREATE (firestore)────────────────────────────────────────────────────────
 export async function crearUbicacion(datos) {
-  await delay()
-  const nueva = { id: _nextId++, ...datos }
-  _db.push(nueva)
-  return structuredClone(nueva)
+  try {
+    //Cloud Firestore genera automáticamente hashes alfanumericos como IDs
+    const docRef = await addDoc(collectionRef, datos);
+    return { id: docRef.id, ...datos };
+  } catch (error) {
+    console.error('[ubicacionService] Error en crearUbicacion:', error);
+    throw new Error('Error al guardar la nueva ubicación.');
+  }
 }
 
-// ── UPDATE ────────────────────────────────────────────────────────
+// ── UPDATE (firestore)────────────────────────────────────────────────────────
 export async function actualizarUbicacion(id, datos) {
-  await delay()
-  const idx = _db.findIndex(u => u.id === id)
-  if (idx === -1) throw new Error(`Ubicación ${id} no encontrada`)
-  _db[idx] = { ..._db[idx], ...datos }
-  return structuredClone(_db[idx])
+  try {
+    const docRef = doc(db, 'ubicaciones', id)
+    
+    // Evitamos enviar el campo ID dentro del payload de actualización de Firestore
+    const { id: _, ...datosAActualizar } = datos
+    
+    await updateDoc(docRef, datosAActualizar)
+    return { id, ...datosAActualizar }
+  } catch (error) {
+    console.error(`[ubicacionService] Error en actualizarUbicacion (${id}):`, error)
+    throw new Error('Error al actualizar los datos de la ubicación.')
+  }
 }
 
-// ── DELETE ────────────────────────────────────────────────────────
+// ── DELETE (firestore)────────────────────────────────────────────────────────
 export async function eliminarUbicacion(id) {
-  await delay()
-  const idx = _db.findIndex(u => u.id === id)
-  if (idx === -1) throw new Error(`Ubicación ${id} no encontrada`)
-  _db.splice(idx, 1)
+  try {
+    const docRef = doc(db, 'ubicaciones', id)
+    await deleteDoc(docRef)
+  } catch (error) {
+    console.error(`[ubicacionService] Error en eliminarUbicacion (${id}):`, error)
+    throw new Error('Error al intentar eliminar la ubicación.')
+  }
 }
-
 // ── GEOCODIFICACIÓN INVERSA (Google Maps Geocoding API) ───────────
 // Requiere que la API Key tenga habilitada "Geocoding API"
 export function geocodificarInverso(lat, lng) {
