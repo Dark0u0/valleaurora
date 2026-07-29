@@ -106,8 +106,10 @@ export const useUbicacionStore = defineStore('ubicacion', () => {
         _notificar('Ubicación creada correctamente.')
       }
       iniciarCrear()
+      return true //Operación exitosa
     } catch (e) {
       error.value = e.message
+      return false
     } finally {
       guardando.value = false
     }
@@ -144,21 +146,35 @@ export const useUbicacionStore = defineStore('ubicacion', () => {
     }
   }
 
-  async function autocompletarDesdeCoordenadas(lat, lng) {
-    geocodificando.value = true
-    try {
-      const direccion = await geocodificarInverso(lat, lng)
-      Object.entries(direccion).forEach(([k, v]) => {
-        if (!form.value[k]) form.value[k] = v
-      })
-      form.value.latitud  = lat
-      form.value.longitud = lng
-    } catch (e) {
-      error.value = e.message
-    } finally {
-      geocodificando.value = false
-    }
+ // -- Autocompletar desde las coordenadas
+async function autocompletarDesdeCoordenadas(lat, lng) {
+  geocodificando.value = true
+  error.value = null
+  try {
+    const direccion = await geocodificarInverso(lat, lng)
+
+    // PRIMERO: Forzamos la limpieza absoluta de los campos de texto
+    form.value.calle = ''
+    form.value.numero = ''
+    form.value.colonia = ''
+    form.value.ciudad = ''
+    form.value.estado = ''
+    form.value.cp = ''
+
+    // SEGUNDO: Poblamos con la respuesta fresca de la geocodificación
+    Object.entries(direccion).forEach(([k, v]) => {
+      form.value[k] = v // Sin el condicional 'if(v)' previo para que respete vacíos si aplica
+    })
+
+    form.value.latitud  = lat
+    form.value.longitud = lng
+  } catch (e) {
+    error.value = e.message
+    console.error('[ubicacion.store] geocodificación inversa:', e.message)
+  } finally {
+    geocodificando.value = false
   }
+}
 
   function actualizarCoordenadas(lat, lng) {
     form.value.latitud  = lat
@@ -176,4 +192,3 @@ export const useUbicacionStore = defineStore('ubicacion', () => {
     usarMiUbicacion, autocompletarDesdeCoordenadas, actualizarCoordenadas,
   }
 })
-//dejar como opcion de menu y para moviles

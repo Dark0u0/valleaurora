@@ -5,7 +5,7 @@
       :type="type"
       :step="step"
       :placeholder="placeholder"
-      :value="modelValue"
+      :value="modelValue ?? ''" 
       @input="$emit('update:modelValue', $event.target.value)"
       class="rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
     />

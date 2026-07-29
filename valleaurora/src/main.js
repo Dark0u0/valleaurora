@@ -7,7 +7,7 @@ import HomeView from './views/HomeView.vue'
 import UsuarioView from './views/UsuarioView.vue'
 import InquilinoView from './views/InquilinoView.vue'
 import ServicioView from './views/ServiciosView.vue'
-import SucursalView from './views/SucursalView.vue'
+import PropiedadView from './views/PropiedadView.vue'
 import NotFoundView from './views/NotFoundView.vue'
 import UbicacionView from './views/UbicacionView.vue'
 
@@ -21,7 +21,7 @@ const router = createRouter({
         { path: '/Usuarios', component: UsuarioView, meta: { title: 'Usuarios' } },
         { path: '/Inquilinos', component: InquilinoView, meta: { title: 'Inquilinos' } },
         { path: '/Servicios', component: ServicioView, meta: { title: 'Servicios' } },
-        { path: '/Sucursal', component: SucursalView, meta: { title: 'Sucursales' } },
+        { path: '/Propiedades', component: PropiedadView, meta: { title: 'Propiedades' } },
         { path: '/Ubicacion', component: UbicacionView, meta: { title: 'Ubicaciones' } },
         { path: '/:pathMatch(.*)*', component: NotFoundView } // No tiene meta.title, se ignorará automáticamente
     ]

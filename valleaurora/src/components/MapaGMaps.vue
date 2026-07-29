@@ -36,7 +36,7 @@ const props = defineProps({
   interactivo: { type: Boolean, default: true },
 })
 
-const emit = defineEmits(['coordenadas-seleccionadas'])
+const emit = defineEmits(['coordenadas-seleccionadas', 'direccion-autocompletada'])
 
 // ── Refs ─────────────────────────────────────────────────────────
 const mapaRef         = ref(null)
@@ -154,6 +154,68 @@ async function init() {
     console.error('Error Google Maps:', err)
     iniciando.value = false
   }
+}
+
+//función montarPlaceAutocomplete para capturar y procesar la dirección:
+async function montarPlaceAutocomplete() {
+  await window.google.maps.importLibrary('places')
+
+  placesEl = new window.google.maps.places.PlaceAutocompleteElement({
+    componentRestrictions: { country: 'mx' },
+  })
+
+  Object.assign(placesEl.style, {
+    width: '100%',
+    borderRadius: '12px',
+    border: '1px solid #e2e8f0',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+    fontSize: '14px',
+    fontFamily: 'system-ui, sans-serif',
+    backgroundColor: '#fff',
+  })
+
+  buscadorWrapperRef.value.appendChild(placesEl)
+
+  placesEl.addEventListener('gmp-placeselect', async ({ place }) => {
+    // 1. IMPORTANTE: Solicitamos explícitamente location Y addressComponents
+    await place.fetchFields({ fields: ['location', 'addressComponents'] })
+
+    const loc = place.location
+    if (!loc) return
+
+    const lat = typeof loc.lat === 'function' ? loc.lat() : loc.lat
+    const lng = typeof loc.lng === 'function' ? loc.lng() : loc.lng
+
+    // Mover el mapa y el marcador visualmente
+    map.panTo({ lat, lng })
+    map.setZoom(17)
+    marker.position = { lat, lng }
+
+    // 2. EXTRAER COMPONENTES DE DIRECCIÓN NATIVOS DEL BUSCADOR
+    const componentes = place.addressComponents || []
+    
+    // Helper adaptado a las propiedades de la nueva API (longName con N mayúscula)
+    const getComp = (...tipos) => {
+      const c = componentes.find(comp => tipos.every(t => comp.types.includes(t)))
+      return c?.longName ?? ''
+    }
+
+    const direccionParseada = {
+      calle:   getComp('route'),
+      numero:  getComp('street_number'),
+      colonia: getComp('sublocality_level_1') || getComp('sublocality') || getComp('neighborhood'),
+      ciudad:  getComp('locality') || getComp('administrative_area_level_2'),
+      estado:  getComp('administrative_area_level_1'),
+      cp:      getComp('postal_code'),
+    }
+
+    // 3. Emitimos un nuevo evento con la ubicación completa al componente padre
+    emit('direccion-autocompletada', {
+      lat: +Number(lat).toFixed(7),
+      lng: +Number(lng).toFixed(7),
+      direccion: direccionParseada
+    })
+  })
 }
 
 // ── Pin personalizado en HTML ─────────────────────────────────────
